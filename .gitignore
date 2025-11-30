@@ -1,0 +1,5 @@
+venv/
+logic/__pycache__/
+__pycache__/
+crawler.lmdb/
+adjacency.bin
