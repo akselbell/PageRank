@@ -1,5 +1,8 @@
 venv/
 logic/__pycache__/
 __pycache__/
-crawler.lmdb/
-adjacency.bin
+data/adjacency.bin
+data/indptr.dat
+data/indices.dat
+data/data.dat
+crawler.lmdb

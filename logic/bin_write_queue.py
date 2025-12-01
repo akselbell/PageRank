@@ -5,7 +5,7 @@ import struct
 class BinWriteQueue:
     """Manages a dedicated thread for writing adjacency data to a binary file."""
     
-    def __init__(self, filename="adjacency.bin"):
+    def __init__(self, filename="data/adjacency.bin"):
         self.filename = filename
         self.write_queue = Queue()
         self.writer_thread = None

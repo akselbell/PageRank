@@ -9,21 +9,20 @@ import os
 import shutil
 from urllib.parse import urljoin, urlparse
 
-MAX_PAGES = 10000
 MAX_WORKERS = 10
 _next_id = 0
 _next_id_lock = Lock()
 
-def reserve_id():
+def reserve_id(MAX_WEBSITES):
     global _next_id
     with _next_id_lock:
-        if _next_id >= MAX_PAGES:
+        if _next_id >= MAX_WEBSITES:
             return None
         id_ = _next_id
         _next_id += 1
         return id_
 
-def crawl(seed_urls):
+def crawl(seed_urls, MAX_WEBSITES):
     # clear the database if it exists
     if os.path.exists("crawler.lmdb"):
         shutil.rmtree("crawler.lmdb")
@@ -45,16 +44,16 @@ def crawl(seed_urls):
 
         while True:
             with _next_id_lock:
-                if _next_id >= MAX_PAGES:
+                if _next_id >= MAX_WEBSITES:
                     break
             
             while len(futures) < MAX_WORKERS * 2:
                 with _next_id_lock:
-                    if _next_id >= MAX_PAGES:
+                    if _next_id >= MAX_WEBSITES:
                         break
                 try:   
                     url = to_visit.get_nowait()
-                    future = executor.submit(crawl_page, url, to_visit, to_visit_lock, env, write_queue)
+                    future = executor.submit(crawl_page, url, to_visit, to_visit_lock, env, write_queue, MAX_WEBSITES)
                     futures.add(future)
                 except Empty:
                     break
@@ -91,12 +90,12 @@ def normalize_url(url):
         normalized = normalized.rstrip('/')
     return normalized
 
-def crawl_page(url, to_visit, to_visit_lock, env, write_queue):
+def crawl_page(url, to_visit, to_visit_lock, env, write_queue, MAX_WEBSITES):
     try:
         url = normalize_url(url)
         url_b = url.encode('utf-8')
         
-        id_ = reserve_id()
+        id_ = reserve_id(MAX_WEBSITES)
         if id_ is None:
             return
 
@@ -137,7 +136,7 @@ def crawl_page(url, to_visit, to_visit_lock, env, write_queue):
                 exists = rtxn.get(link_b)
             
             if exists is None:
-                link_id = reserve_id()
+                link_id = reserve_id(MAX_WEBSITES)
                 if link_id is None:
                     break
                 link_id_b = str(link_id).encode('ascii')
@@ -159,7 +158,6 @@ def crawl_page(url, to_visit, to_visit_lock, env, write_queue):
                     dest_ids.append(existing_id)
                 except (ValueError, AttributeError):
                     pass
-        print(f"Crawled {url} with ID {id_} and {len(dest_ids)} dest_ids")
         write_queue.send(id_, dest_ids)
     except requests.exceptions.RequestException as e:
         print(f"Request error crawling {url}: {e}")
